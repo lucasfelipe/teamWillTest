@@ -18,10 +18,12 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -31,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class RankingControllerTest {
 
     @Autowired
-    private RankingController controller;
+    private WebApplicationContext ctx;
 
     private MockMvc mvc;
     private JacksonTester<RankingDTO> json;
@@ -42,19 +44,17 @@ class RankingControllerTest {
     void setup() {
         JacksonTester.initFields(this, new ObjectMapper());
 
-        mvc = MockMvcBuilders.standaloneSetup(controller)
+        mvc = MockMvcBuilders.webAppContextSetup(ctx)
+                .apply(springSecurity())
                 .build();
     }
 
     @Test
-    @WithMockUser(username = "teamwill", roles = {"ADMIN"})
+    @WithMockUser(username = "teamwill", password = "secret", roles = {"ADMIN"})
     @SneakyThrows
     void testGivenRankingDTOWhenCreateThenReturnsCreatedAndLocation() {
         // GIVEN
-        val dto = RankingDTO.builder()
-                .name("Andreas")
-                .rank(100)
-                .build();
+        val dto = getUserRankMock();
         val location = API.RANKINGS + "/" + 11;
 
         // WHEN
@@ -90,6 +90,29 @@ class RankingControllerTest {
         assertThat(all).isNotNull();
         assertThat(all).element(0).extracting("name").isEqualTo("Janaina");
         assertThat(all).element(4).extracting("name").isEqualTo("Monica");
+    }
+
+    @Test
+    @SneakyThrows
+    @WithAnonymousUser
+    void testGivenUserNotAllowedWhenCreateThenReturnForbidden() {
+        // GIVEN
+        val dto = getUserRankMock();
+        val location = API.RANKINGS + "/" + 11;
+
+        // WHEN THEN
+        mvc.perform(
+                post(API.RANKINGS)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.write(dto).getJson()))
+                .andExpect(status().isForbidden());
+    }
+
+    private RankingDTO getUserRankMock() {
+        return RankingDTO.builder()
+                .name("Andreas")
+                .rank(100)
+                .build();
     }
 
 }

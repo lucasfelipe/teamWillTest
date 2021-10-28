@@ -6,6 +6,7 @@ import com.teamwill.app.test.entity.Ranking;
 import com.teamwill.app.test.service.RankingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.annotation.Secured;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +33,7 @@ public class RankingController {
     private final RankingService service;
 
     @PostMapping
+    @Secured("ROLE_ADMIN")
     public ResponseEntity<Void> createRanking(@Valid @RequestBody RankingDTO dto) {
         Ranking ranking = mapper.fromDTOtoEntity(dto);
         Long id = service.createRanking(ranking);
